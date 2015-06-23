@@ -1,0 +1,18 @@
+#
+# This benchmark tests the communication portion of the sparse matrix-vector multiplication
+# used in the QIS Spin model.
+#
+#
+all:	ed_tfim.exe ed_tfim_mpi2.exe
+        
+%.o: %.c
+	/users/hck28/pgi/linux86-64/15.5/bin/pgcc -c $< -I/opt/cray/mpt/7.2.2/gni/mpich2-pgi/153/include
+
+ed_tfim.exe: ed_tfim.o
+	/users/hck28/pgi/linux86-64/15.5/bin/pgcc -o ed_tfim.exe ed_tfim.o -L/opt/cray/mpt/7.2.2/gni/mpich2-pgi/153/lib -lmpich_pgi -L/apps/daint/lapack/3.4.2/gnu_472 -llapack /apps/daint/blas/2007/gnu_472/blas_LINUX.a -lgfortran
+
+ed_tfim_mpi2.exe: ed_tfim_mpi2.o
+	/users/hck28/pgi/linux86-64/15.5/bin/pgcc -o ed_tfim_mpi2.exe ed_tfim_mpi2.o -L/opt/cray/mpt/7.2.2/gni/mpich2-pgi/153/lib -lmpich_pgi -L/apps/daint/lapack/3.4.2/gnu_472 -llapack /apps/daint/blas/2007/gnu_472/blas_LINUX.a -lgfortran
+
+clean:
+	rm -f *.o *.exe
