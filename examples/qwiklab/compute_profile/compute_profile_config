@@ -1,0 +1,6 @@
+# compute_profile_config
+method
+gputime
+cputime
+occupancy
+memtransfersize
