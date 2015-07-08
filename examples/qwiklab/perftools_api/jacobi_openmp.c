@@ -8,13 +8,8 @@
 #ifdef _CRAYPAT_CSCS
 #include <pat_api.h>
 #endif
-/*
- * pat_help API regions C .  ; more /opt/cray/perftools/default/include/pat_api.h
- * rm -f *.xf *.ap2 && cc -hnoomp -D_CSCS_ITMAX=1000 -D_CRAYPAT_CSCS jacobi_openmp.c -o l1l2
- * pat_build -f -u l1l2 && sbatch.sh santis 1 l1l2+pat 1 1 1
- * pat_report -T -s traced_functions=show l1l2+pat*.xf >  xf
-*/
 
+// https://bitbucket.org/jgphpc/pug/issue/45/perftools-api
 void init_host();
 void finalize_host();
 void start_timer();

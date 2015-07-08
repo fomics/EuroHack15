@@ -1,8 +1,6 @@
 program jacobi1
 
-! rm -f *.xf *.ap2 && ftn -D_CRAYPAT_CSCS task1_patrecord-loop.F90 -o l1l2
-! pat_build -f -u l1l2 && sbatch.sh santis 1 l1l2+pat 1 1 1
-! pat_report -T -s traced_functions=show l1l2+pat*.xf >  xf
+! https://bitbucket.org/jgphpc/pug/issue/45/perftools-api
 
 !use mpi
 implicit real(4) (A-H,O-Z)
