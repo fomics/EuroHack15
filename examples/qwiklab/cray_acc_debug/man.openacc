@@ -1,0 +1,1560 @@
+intro_OpenACC(7)                                   Last changed: 05-12-2014
+
+
+NAME
+     intro_OpenACC - Summarize OpenACC support for accelerators.
+
+IMPLEMENTATION
+     Cray Linux Environment (CLE)
+
+DESCRIPTION
+     The OpenACC API allows the programmer to supplement information
+     available to the compilers in order to offload code from a host CPU to
+     an attached accelerator device. The following sections summarize the
+     Cray implementation of the OpenACC Application Programming Interface,
+     Version 2.0 Specification. For more detailed information refer to the
+     specification.
+
+     Synopses of the directives are listed in the DIRECTIVES section.
+     Clauses which are similarly defined across multiple directives are
+     described in the COMMON CLAUSES section, otherwise they are described
+     with the relevant directive.
+
+     For coding examples, see the OpenACC.examples(7) man page.
+
+DIRECTIVES
+     The following accelerator directives are supported in the current
+     release : ATOMIC, CACHE, DATA, ENTER DATA , EXIT DATA, DECLARE,
+     HOST_DATA, KERNELS, KERNELS LOOP, LOOP, PARALLEL, PARALLEL LOOP,
+     ROUTINE, UPDATE, and WAIT.
+
+   ATOMIC
+     The atomic directive indicates that a variable should be accessed
+     and/or updated atomically to avoid the possibility of indeterminate
+     values. The atomic directive relates to the subsequent statement, or
+     atomic capture may optionally relate to a update/capture, or
+     capture/update statement pair.
+
+   atomic synopsis
+     #pragma acc atomic [atomic-clause]
+     statement
+
+     #pragma acc atomic update
+     update-statement
+
+     #pragma acc atomic capture
+      capture-statement
+
+     #pragma acc atomic capture
+     {update-statement; capture-statement}
+
+     !$acc atomic [atomic-clause]
+     [ !$acc end atomic ]
+
+     !$acc atomic update
+     update-statement
+     [ !$acc end atomic ]
+
+     !$acc atomic capture
+      capture-statement
+     [ !$acc end atomic ]
+
+     !$acc atomic capture
+      capture-statement
+     update-statement
+     !$acc end atomic
+
+     where atomic-clause is one of read, write, update, or capture, listed
+     below with appropriate statement forms, as applicable to Fortran, C,
+     C++ or all.
+
+     read
+
+               v=x
+
+
+     write
+
+               x=expr
+
+
+     update, or no clause, where update-statement is one of the following
+               forms:
+
+               x++
+               x--
+               ++x
+               --x
+               x operator= expr
+               x = x operator expr
+               x = expr operator x
+
+
+               x = intrinsic_procedure_name (x, expr-list)
+               x = intrinsic_procedure_name (expr-list, x)
+
+
+     capture, where capture-statement is one of the following forms:
+
+               v = x++
+               v = x--
+               v = ++x
+               v = --x
+               v = x operator= expr
+               v = x = x operator expr
+               v = x = expr operator x
+
+
+     update/capture sequence
+
+               v = x; x binop= expr
+               x binop= expr; v = x;
+               v = x; x = x binop expr;
+               v = x; x = expr binop x;
+               x = x binop expr; v = x;
+               x = expr binop x; v = x;
+               v = x; x = expr;
+               v = x; x++;
+               v = x; ++x;
+               ++x; v = x;
+               x++; v = x;
+               v = x; x--;
+               v = x; --x;
+               --x; v = x;
+               x--; v = x;
+
+
+     In the preceding expressions, x and v (as applicable) are scalar
+     variables of intrinsic type and x must not be an allocatable variable.
+     During the execution of an atomic region, multiple syntactic
+     occurrences of x must refer to the same storage location. Neither v
+     nor expr may access the storage location designated by x. operator is
+     one of +, *, -, /, &, ^, |, <<, or >> (as applicable to the language).
+
+   CACHE
+     The cache directive specifies a list of array elements or subarrays
+     that should be fetched into software cache for the body of the loop.
+     The directive must be located within an innermost loop, at the top.
+
+   cache synopsis
+     #pragma acc cache( var-list )
+
+     !$acc cache( var-list )
+
+     where entries in var-list are single array elements or simple
+     subarrays. In C/C++ a simple subarray is of the form
+     array[lower:length]. In Fortran a simple subarray is of the form
+     array(lower:upper,lower2:upper2)
+
+   DATA
+     Starts an accelerator data region and defines scalars, arrays and
+     subarrays to be allocated in the accelerator memory for the duration
+     of the region.
+
+   data synopsis
+     #pragma acc data [clause [[,] clause]...]
+                    Structured-block
+
+     !$acc data [clause [[,] clause]...]
+                    Structured-block
+     !$acc end data
+
+     where clause is one of the following:
+
+     if( condition )
+               If the condition evaluates to nonzero in C or C++, or .true.
+               in Fortran, the program allocates memory on, and moves data
+               to and/or from the accelerator. If the clause evaluates to
+               zero in C or C++, or .false. in Fortran, no memory is
+               allocated and no data is moved.
+
+     copy( list )
+
+     copyin( list )
+
+     copyout( list )
+
+     create( list )
+
+     present( list )
+
+     present_or_copy( list )
+
+     present_or_copyin( list )
+
+     present_or_copyout( list )
+
+     present_or_create( list )
+
+     deviceptr ( list )
+
+     See DATA CLAUSES.
+
+   DECLARE
+     Used in the declaration section of a Fortran subroutine, function, or
+     module, or following a variable declaration in C or C++ in order to
+     specify that memory will be allocated on the accelerator for the
+     duration of a function, subroutine, or program, and whether the data
+     values are to be transferred from the host to the accelerator upon
+     entry, and from the accelerator to the host upon exit from the
+     implicit data region.
+
+   declare synopsis
+     #pragma acc declare clause [[,] clause]...
+
+
+     !$acc declare clause [[,] clause]...
+
+
+     where clause is one of the following:
+
+     copy( list )
+
+     copyin( list )
+
+     copyout( list )
+
+     create( list )
+
+     present( list )
+
+     present_or_copy( list )
+
+     present_or_copyin( list )
+
+     present_or_copyout( list )
+
+     present_or_create( list )
+
+     deviceptr( list )
+
+     device_resident( list )
+               Allocate memory for list in accelerator memory, not in host
+               memory. Arguments are variable or array names, or Fortran
+               common block names enclosed in slashes. Subarrays not
+               permitted. Host cannot access list. Data lifetime is entire
+               execution of the program.
+
+     link( list )
+               Used for large global host static data that is referenced
+               within an accelerator routine that should have a dynamic
+               data lifetime on the device. Specifies that only a global
+               link for list arguments should be statically created in
+               accelerator memory. list arguments must be global data -
+               appear in global scope (C/C++ extern, Fortran common block
+               names, or module declaration section).
+
+     See DATA CLAUSES.
+
+   ENTER DATA
+     The enter data directive defines scalars, arrays, and subarrays to be
+     allocated in accelerator memory for the remaining execution of the
+     thread or until an exit data directive appears, which deallocates the
+     accelerator memory.
+
+   enter data synopsis
+     #pragma acc enter data [clause [[,] clause]...]
+
+
+     !$acc enter data [clause [[,] clause]...]
+
+
+     where clause is one of the following:
+
+     async[ ( integer-expression ) ]
+
+     wait[ ( integer-expression-list ) ]
+
+     if( condition )
+               If the condition evaluates to nonzero in C or C++, or .true.
+               in Fortran, accelerator memory is allocated and data is
+               moved from local memory to the accelerator.
+
+     copyin( list )
+
+     create ( list )
+
+     present_or_copyin( list )
+
+     present_or_create( list )
+
+     See DATA CLAUSES.
+
+   EXIT DATA
+     The exit data directive deallocates accelerator memory that was
+     allocated by the previous enter data construct or runtime API routine.
+
+   exit data synopsis
+     #pragma acc exit data [clause [[,] clause]...]
+
+
+     !$acc exit data [clause [[,] clause]...]
+
+
+     where clause is one of
+
+     if( condition )
+               If the condition evaluates to nonzero in C or C++, or .true.
+               in Fortran, data is moved from accelerator to local memory
+               and accelerator memory is deallocated.
+
+     copyout( list )
+
+     delete( list )
+
+     async[ ( integer-expression ) ]
+
+     wait[ ( integer-expression-list ) ]
+
+     See DATA CLAUSES.
+
+   HOST_DATA
+     Makes the device address of data available from the host.
+
+   host_data synopsis
+     #pragma acc host_data [clause [[,] clause]...]
+                    Structured-block
+
+     !$acc host_data [clause [[,] clause]...]
+                    Structured-block
+     !$acc end host_data
+
+     where clause is:
+
+     use_device( list )
+               Use the device address of any variable or array in the list
+               in code within the construct. May be used to pass the device
+               address of variables or arrays to optimized procedures
+               written in a lower-level API. The variables or arrays in
+               list must be present in the accelerator memory due to data
+               regions that contain this construct.
+
+   KERNELS
+     When the compiler encounters a kernels directive, it breaks the
+     structured block into a sequence of distinct kernels by loop nests and
+     launches them, in sequence, on the accelerator.
+
+     Separate gangs of workers are created to execute each of the kernels
+     on the accelerator.
+
+     The gang, worker, and vector configuration for each kernel is dictated
+     by loop constructs inside of the kernels construct. If a loop nest
+     does not have a loop construct than the compiler will select a
+     configuration based on its analysis of the loop. The number and
+     configuration of gangs of workers and vector length may be different
+     for each kernel.
+
+     If there is no async clause, there is an implicit barrier at the end
+     of the kernels region; the program running on the host will wait for
+     gangs to complete execution before continuing.
+
+     Restrictions: A program should not branch into or out of the
+     construct. A program should not depend on any ordering of the
+     evaluations of the clauses. A program should not depend on any side
+     effects of the evaluations of the clauses. At most, one if clause may
+     appear.
+
+          Note:  Do not use data regions to place a scalar on the
+          accelerator if the scalar appears in a kernel construct.
+
+   kernels synopsis
+     #pragma acc kernels [clause [[,] clause]...]
+                    Structured-block
+
+     !$acc kernels [clause [[,] clause]...]
+                    Structured-block
+     !$acc end kernels
+
+     where clause is one of the following:
+
+     async[ ( integer-expression ) ]
+
+     wait[ ( integer-expression-list ) ]
+
+     device_type ( device-type-list )
+
+     if( condition )
+               If the condition evaluates to nonzero in C or C++, or .true.
+               in Fortran, the region runs on the accelerator. Otherwise,
+               the region runs on the host.
+
+     copy ( list )
+
+     copyin ( list )
+
+     copyout ( list )
+
+     create ( list )
+
+     present ( list )
+
+     present_or_copy ( list )
+
+     present_or_copyin ( list )
+
+     present_or_copyout ( list )
+
+     present_or_create ( list )
+
+     deviceptr ( list )
+
+     default( none )
+               See COMMON CLAUSES.
+
+   KERNELS LOOP
+     The kernels loop directive is a combined construct consisting of a
+     kernels construct which contains a single loop nest. This is identical
+     to explicitly specifying a kernels directive containing a loop
+     directive. Uses the combined set of clauses available with the kernels
+     and loop directives.
+
+   kernels loop synopsis
+     !$acc kernels loop [clause [[,] clause]...]
+               Do-loop-nest
+     !$acc end kernels loop
+
+     #pragma acc kernels loop [clause [[,] clause]...]
+                    Do-loop-nest
+
+   LOOP
+     The loop directive describes what type of parallelism to use to
+     execute the loop and declare loop-private variables and arrays and
+     reduction operations. Applies to the loop that immediately follows.
+
+   loop synopsis
+     #pragma acc loop [clause [[,] clause]...]
+                For-loop-nest
+
+     !$acc loop [clause [[,] clause]...]
+          Do-loop-nest
+     !$acc end loop
+
+     where clause is one of the following:
+
+     collapse( scalar-integer-expression )
+               Specifies that the next scalar-integer-expression nested
+               loops are associated with the loop construct. scalar-
+               integer-expression must be a constant positive integer
+               expression.
+
+               If more than one loop is associated with the loop construct,
+               the iterations of all the associated loops are all scheduled
+               according to the rest of the clauses. The trip count for all
+               loops associated with the collapse clause must be computable
+               and invariant in all the loops. A gang, worker, or vector
+               clause on the directive may be applied to each loop or to
+               the linearized iteration space as determined by the
+               compiler.
+
+               If no collapse clause is present, only the immediately
+               following loop is associated with the loop directive.
+
+     gang ( gang-arg-list )
+               In a parallel region, specifies that iterations of the
+               loop/s are to be executed in parallel by distributing them
+               among the gangs created by the parallel construct. Only the
+               static option is allowed; the number of gangs is controlled
+               by the parallel construct.
+
+               In a kernels region, specifies that the iterations of the
+               loop/s are to executed in parallel across the gangs created
+               for any kernel contained within the loop/s. num specifies
+               how many gangs to use to execute the iterations of this
+               loop.
+
+               The region of a loop with the gang clause may not contain
+               another loop with a gang clause unless within a nested
+               parallel or kernels region.
+
+               gang-arg-list is one of:
+
+               o  [num:] int-expr
+
+                  Specifies how many gangs to use to execute the iterations
+                  of this loop.
+
+               o  [static:] size-expr
+
+                  Schedule loop iterations to gangs. Use size-expr  as a
+                  chunk size. If argument appears with an asterisk, the
+                  compiler selects a chunk size. Iterations are divided
+                  into chunks of the selected size.
+
+     worker [( [num:] int-expr )]
+               In a parallel region, specifies that the iterations of the
+               associated loop/s are to be executed in parallel by
+               distributing the iterations among the multiple workers
+               within a single gang. No argument is allowed. The loop
+               iterations must be data independent, except for variables
+               specified in a reduction clause.
+
+               In a kernels region, specifies that the iterations of the
+               associated loop/s are to be executed in parallel across the
+               workers within a gang for any kernel within the loop/s. If
+               an argument is specified, it indicates how many workers per
+               gang to use to execute the iterations of the this loop.
+
+               A loop with the worker clause may not contain a loop
+               containing the gang clause.
+
+     vector [( [length:] int-expr )]
+               Specifies that the iterations of the associated loop/s are
+               to be executed in vector or SIMD mode.
+
+               In a parallel region, the operations will execute using
+               vectors of the length specified or chosen for the parallel
+               region; no option is necessary. In a kernels region the
+               argument indicates that the iterations should be processed
+               in vector strips of that length. If no argument is
+               specified, the implementation will choose an appropriate
+               vector length.
+
+               A loop with the vector clause may not contain a loop
+               containing the gang or worker clause.
+
+     seq       Specifies that the associated loop or loops are to be
+               executed sequentially by the accelerator. Overrides any
+               automatic compiler parallelization or vectorization. This is
+               the default in the context of a parallel region.
+
+     auto      Instructs the compiler to select either gang, worker or
+               vector parallelism for this loop. Loop must either have
+               independent clause, be in a parallel construct, or be
+               determined by the compiler to be data independent.
+
+     tile ( tile_size_list )
+               Specifies that each loop in the loop nest are to be split
+               into two loops, with an outer set of tile loops and an inner
+               set of elementloops.
+
+               The directive is followed by a list of one or more tile_size
+               values which are constant positive integer expressions or an
+               asterisk. If there are N tile sizes in the list, the loop
+               directive must be followed by N tightly-nested loops. The
+               first argument in the tile-size-list corresponds to the
+               innermost loop of the N associated loops, and the last
+               element corresponds to the outermost associated loop. If the
+               tile size is specified with an asterisk, the implementation
+               will choose an appropriate value.
+
+               Each loop in the nest will be split into two loops, an outer
+               tile loop and an inner element loop. The trip count of the
+               element loop will be limited to the corresponding tile size
+               from the tile-size-list. If the vector clause appears on the
+               loop directive, the vector clause is applied to the element
+               loops. If the gang clause appears on the loop directive, the
+               gang clause is applied to the tile loops. If the worker
+               clause appears on the loop directive, the worker clause is
+               applied to the element loops if no vector clause appears,
+               and to the tile loops otherwise.
+
+     device_type( architecture[, architecture] ... ), device_type( * )
+
+     independent
+               The loop iterations are data-independent and can be executed
+               in parallel.
+
+     private(  list )
+               A copy of each item on the list will be created for each
+               iteration of the associated loop(s), otherwise referenced
+               variables are not privatized for a thread that executes the
+               loop iterations.
+
+     reduction( operator:list )
+               See COMMON CLAUSES.
+
+   PARALLEL
+     When the compiler encounters a parallel directive, it creates a
+     parallel region to be executed on an attached accelerator. Gangs of
+     workers are created to execute the parallel region on the accelerator.
+     Once the gangs are created, the number of gangs and workers in each
+     gang remain constant for the duration of the parallel region. One
+     worker in each gang begins executing the code in the structured block
+     of the construct. Each gang may execute a different path of
+     statements.
+
+   parallel synopsis
+     #pragma acc parallel [clause [[,] clause]...]
+                    Structured-block
+
+     !$acc parallel [clause [[,] clause]...]
+                    Structured-block
+     !$acc end parallel
+
+     where clause is one of:
+
+     async[ ( integer-expression ) ]
+
+     wait[ ( integer-expression-list ) ]
+
+     num_gangs ( integer-expression )
+               Defines the number of parallel gangs that will execute the
+               region. If not specified the default will be determined by
+               the compiler.
+
+     num_workers ( integer-expression )
+               Defines the number of workers within each gang that will
+               execute the region. scalar-integer-expression must be 1, 2,
+               4, 8, 16 or 32.
+
+               If the user specifies num_workers, vector_length can only be
+               32.
+
+               If the user does not specify num_workers, then vector_length
+               can be 1, 32, 64, 128, 256, 512 or 1024.
+
+     vector_length( integer-expression )
+               Defines the vector length to use for vector or SIMD
+               operations within each worker of the gang. vector_length is
+               used for loops annotated with the vector clause on a loop
+               directive, and for loop automatically vectorized by the
+               compiler within the parallel region.
+
+               If the user specifies num_workers, then vector_length can
+               only be 32.
+
+               If the user does not specify num_workers, then vector_length
+               can be 1, 32, 64, 128, 256, 512 or 1024.
+
+     device_type( architecture[, architecture] ... )
+
+     if( condition )
+               If the clause evaluates to nonzero in C or C++, or .true. in
+               Fortran, the region runs on the accelerator. If the clause
+               evaluates to zero in C or C++, or .false. in Fortran, the
+               region is run on the host.
+
+     reduction( operator : list )
+
+     copy( list )
+
+     copyin( list )
+
+     copyout( list )
+
+     create( list )
+
+     present( list )
+
+     present_or_copy( list )
+
+     present_or_copyin( list )
+
+     present_or_copyout( list )
+
+     present_or_create( list )
+
+     deviceptr( list )
+
+     private( list )
+               A copy of each item on the list will be created for each
+               parallel gang. The private versions of the items on the list
+               will be initialized to the state of the associated item on
+               the host.
+
+     firstprivate( list )
+               The private versions of the items on the list will be
+               initialized to the state of the associated item on the host
+               .
+
+     default(none)
+
+   Description
+     To avoid redundant execution of the same loops by multiple gangs,
+     parallel regions should contain a loop directive to partition loop
+     iteration between gangs:
+
+       !$acc parallel num_gangs(10)
+       !$acc loop
+       !! iterations are partitioned between gangs
+       do i=1,n
+         a(i) = b(i)*c(i)+a(i);
+       end do
+       !$acc end parallel
+
+
+     Alternatively, use a parallel loop or kernels directive to ensure loop
+     iterations are partitioned between gangs:
+
+       !$acc parallel loop
+       do i=1,n
+         a(i) = b(i)*c(i)+a(i);
+       end do
+       !$acc end parallel loop
+
+       !$acc kernels
+       do i=1,n
+         a(i) = b(i)*c(i)+a(i);
+       end do
+       !$acc end kernels
+
+
+          Note:  Do not use data regions to place a scalar on the
+          accelerator if the scalar appears in a parallel
+          construct.Restrictions: Parallel regions may not contain other
+          parallel regions or kernel regions. A program should not branch
+          into or out of the construct. A program should not depend on any
+          ordering of the evaluations of the clauses. A program should not
+          depend on any side effects of the evaluations of the clauses. At
+          most, one if clause may appear.
+
+   PARALLEL LOOP
+     The parallel loop directive is a combined construct consisting of a
+     parallel region which contains a single loop nest. This is identical
+     to explicitly specifying a parallel directive containing a loop
+     directive. Uses the combined set of clauses available with the
+     parallel and loop directives.
+
+   parallel loop synopsis
+     !$acc parallel loop [clause [[,] clause]...]
+               Do-loop-nest
+     !$acc end parallel loop
+
+     #pragma acc parallel loop [clause [[,] clause]...]
+                    Do-loop-nest
+
+   ROUTINE
+     Tells the compiler to compile a procedure for an accelerator as well
+     as the host, and the directive defines the attributes of the
+     accelerator version. A procedure compiled with the routine directive
+     for an accelerator is called an accelerator routine.
+
+     In C or C++, the directive without a name may appear immediately
+     before the function definition or function prototype to which it
+     applies. The directive with a name may appear anywhere that a function
+     prototype is allowed and applies to the function in that scope with
+     that name, and must appear before any definition or usage of that
+     function.
+
+     In Fortran, the routine directive without a name may appear within the
+     specification part of a subroutine or function definition, or within
+     an interface body for a subroutine or function in an interface block,
+     and applies to the containing subroutine or function. The directive
+     with a name may appear in the specification part of a subroutine,
+     function or module, and applies to the named subroutine or function.
+
+   routine synopsis
+     #pragma acc routine [clause [[,] clause]...]
+
+     #pragma acc routine ( name ) [clause [[,] clause]...]
+
+     !$acc routine [clause [[,] clause]...]
+
+     !$acc routine ( name )[clause [[,] clause]...]
+
+     where name is one of the following:
+
+     bind( name ), bind( string )
+               When the identifier name is compiled, it specifies the exact
+               name to use when calling the procedure. string specifies the
+               exact name to use when calling the procedure.
+
+     device_type( architecture[, architecture] ... ), device_type( * )
+               Clauses located between a device_type, and a subsequent
+               device_type clause, or the end of the construct, apply only
+               when compiling for the specified architecture.
+
+               Only the gang, worker, vector, seq, bind clauses may follow
+               the device_type on the routine construct. Also, only one of
+               either gang, worker, vector, or seq may be specified for
+               each device type.
+
+     nohost    Tells the compiler not to compile a version of this routine
+               for the host. All calls to this routine must appear within
+               accelerator compute regions. If a nohost routine is called
+               from other procedures, those procedures must also have a
+               routine directive with a nohost clause and must appear
+               within accelerator compute regions.
+
+     seq       Specifies that the procedure name, and any of its called
+               procedures do not contain a loop with a gang, worker, or
+               vector clause. If a loop with an auto clause appears in
+               name, it will be executed in seq mode.
+
+     gang      Specifies that the iterations of the associated loop or
+               loops are to be executed in parallel by distributing the
+               iterations among the gangs. The loop iterations must be data
+               independent, except for variables specified in a reduction
+               clause.
+
+     worker    Specifies that the iterations of the associated loop or
+               loops are to be executed in parallel by distributing the
+               iterations among the multiple workers within a single gang.
+               The loop iterations must be data independent, except for
+               variables specified in a reduction clause. A loop with the
+               worker clause may not contain a loop containing the gang
+               clause.
+
+     vector    Specifies that the iterations of the associated loop/s are
+               to be executed in vector or SIMD mode. The operations will
+               execute using vectors of the length specified or chosen for
+               the parallel region. A loop with the vector clause may not
+               contain a loop containing the gang or worker clause.
+
+   UPDATE
+     The update directive is used within an explicit or implicit data
+     region to update all or part of a host memory array with values from
+     the corresponding array in accelerator memory, or to update all or
+     part of an accelerator memory object with values from the
+     corresponding object in host memory.
+
+     This directive may not appear inside of a parallel region. The list
+     items on the accelerator shall be visible in accelerator shared
+     memory. This directive is executable. It shall not appear in place of
+     the statement following an if, while, do, switch, or label in C, or in
+     place of the statement following a logical if in Fortran.
+
+   update synopsis
+     #pragma acc update [clause [[,] clause]...]
+
+     !$acc update [clause [[,] clause]...]
+
+     where clause is one of the following:
+
+     async[ ( scalar-integer-expression ) ]
+
+     wait[ ( integer-expression-list ) ]
+
+     device_type( architecture[, architecture] ... )
+
+     if( condition )
+               If the condition evaluates to nonzero in C or C++, or .true.
+               in Fortran, the program moves data to/from the accelerator.
+               If the clause evaluates to zero in C or C++, or .false. in
+               Fortran, no data is moved.
+
+     self( list )
+               Synonym for update host.
+
+     host( list )
+               Specifies that the variables, arrays or subarrays in the
+               list are to be copied from the accelerator device memory to
+               the host memory.
+
+     device( list )
+               Specifies that the variables, arrays or subarrays in the
+               list are to be copied from the host memory to the
+               accelerator device memory.
+
+   WAIT
+     The host thread executes asynchronous operations on the accelerator
+     device by enqueuing them into one or more activity queues which may be
+     explicitly or implicitly specified by the arguments to the async
+     clause. The wait directive causes the local thread to wait for
+     completion of asynchronous operations, or causes one activity queue to
+     synchronize with one or more other activity queues.
+
+     If the wait-expr argument is not specified, and there is no async
+     clause on the directive, the host process waits until all asynchronous
+     activities initiated by the local host process on any activity queue
+     have completed.
+
+     If wait-expr is specified, it must be scalar integer expression and it
+     refers to a specific activity queue. If there are wait-expr arguments
+     specified, and there is no async clause, the host thread waits until
+     all actions initiated by this host thread on the associated activity
+     queues have completed. If there are two or more threads executing and
+     sharing the same accelerator device, a wait directive with no async
+     clause will cause the local host thread to wait until all of the
+     asynchronous operations initiated by that thread have completed; there
+     is no guarantee that all the similar asynchronous operations initiated
+     by some other host thread will have completed.
+
+     If there is an async clause with no scalar-int-expr argument, no new
+     async operations may be launched or executed on any activity queue
+     until all async operations enqueued up to this point by this host
+     thread have completed. If there is an async clause with a scalar-int-
+     expr argument, no new operation may be launched or executed on the
+     scalar-int-expr activity queue until all operations enqueued up to
+     this point by this thread on scalar-int-expr activity queues have
+     completed.
+
+   wait synopsis
+     #pragma acc wait [(wait-expr[, waitexpr] ... )] [clause]
+
+     !$acc wait [(wait-expr[, wait-expr] ... )]  [clause]
+
+     where clause may be the following:
+
+     async [( scalar-int-expr )]
+               If no scalar-int-expr is specified, the host thread will
+               wait until all asynchronous activities initiated by the
+               local thread have completed.
+
+COMMON CLAUSES
+   ASYNCHRONOUS
+     async     This is an optional clause that may appear on a parallel,
+               kernels, enter data, exit data, update, or wait directive.
+               Causes the local thread to proceed with the code following
+               the directive, while the parallel or kernels region or data
+               operations are processed asynchronously.
+
+               If scalar-integer-expression is specified, it may be the
+               name of an integer variable (int for C or C++, integer for
+               Fortran), an integer expression, or a constant. The same
+               scalar-integer-expression may be used in a wait directive or
+               various runtime routines to make the host process test or
+               wait for completion of the update.
+
+               When there is no async clause, the host process will wait
+               until the updates are complete before executing any of the
+               code that follows the update directive. An async clause may
+               also be used with no argument, in which case the
+               implementation will use a value distinct from all explicit
+               async arguments in the program. If there are two or more
+               host threads executing and sharing the same accelerator
+               device, two asynchronous activities with the same argument
+               value will execute on the device one after the other, though
+               the relative order is not determined. Two asynchronous
+               regions with different scalar-integer-expression values may
+               be executed on the device in any order relative to each
+               other. If there are two or more host threads executing and
+               sharing the same accelerator device, two asynchronous
+               activities with the same argument value will execute on the
+               device one after the other, though the relative order is not
+               determined.
+
+     wait
+
+   DATA CLAUSES
+     copy( list )
+               The copy clause causes the accelerator shared objects to be
+               initialized to the host's memory state when the region
+               starts and then causes the host's memory state to be updated
+               with the accelerator memory state when the region ends. This
+               combines the behavior of the copyin and copyout clauses.
+
+     copyin( list )
+               Causes the accelerator shared objects to be initialized to
+               the hosts memory state when the region starts. Objects in
+               this clause may also appear in the copyout clause.
+
+     copyout( list )
+               Causes the host's memory to be updated with the
+               accelerator's shared objects state when the accelerator
+               region ends. Objects in this clause may also appear in the
+               copyin clause.
+
+     create( list )
+               Declares that the variables, arrays or subarrays in the list
+               need to be allocated in the device memory, but the values in
+               the host memory are not used on the accelerator, and any
+               values computed and assigned on the accelerator are not used
+               on the host. Data in this clause is not copied between the
+               host and device memories.
+
+     deviceptr( list )
+               Declares that the pointers in list are device pointers so
+               data need not be allocated or moved between host and device
+               for this pointer. In C/C++, list must be pointer variables.
+               In Fortran, the variables in list must be dummy arguments
+               and may not have pointer, allocatable, or value attributes.
+
+     present( list )
+               Causes the system to look for the list items on the
+               accelerator. It is an error to not find the object on the
+               accelerator.
+
+     present_or_copy( list )
+               Causes the system to look for the list items on the
+               accelerator. If the object is not found, the copy clause
+               takes effect.
+
+     present_or_copyin( list )
+               Causes the system to look for the list items on the
+               accelerator. If the object is not found, the copyin clause
+               takes effect.
+
+     present_or_copyout( list )
+               Causes the system to look for the list items on the
+               accelerator. If not found on the accelerator, the data is
+               allocated in the accelerator memory and copied from the
+               accelerator back to the host when the region exits.
+
+     present_or_create( list )
+               Causes the system to look for the list items on the
+               accelerator. If not found, the data is allocated in the
+               accelerator.
+
+     default( none )
+               Optional. Requires that all data used in the compute region
+               have a predetermined data attribute, or explicitly appears
+               in a data clause for the compute construct or for a
+               lexically containing data construct. The compiler will not
+               implicitly determine a data attribute for any variable
+
+               If the default(none) clause is not specified, the compiler
+               determines data attributes for referenced variables that do
+               not appear in a data clause.
+
+   DEVICE
+     device_type( architecture[, architecture] ... ), device_type( * )
+               Use this clause to specify that certain clauses apply to
+               accelerators of differing architecture types. A single
+               directive may have several device_type clauses.
+
+               Clauses located between a device_type, and a subsequent
+               device_type clause, or the end of the construct, apply only
+               when compiling for the specified architecture.
+
+               architecture must be nvidia, NVIDIA, HOST, or host. Clauses
+               that follow a device_type clause with an asterisk for an
+               argument apply to any accelerator architecture that was not
+               explicitly named in any device_type clause on that
+               directive.
+
+               Clauses on a directive with no device_type clause apply to
+               all accelerator architectures.
+
+   COMPUTE
+     reduction( operator:list )
+               The reduction clause specifies a reduction operator and one
+               or more scalar variables. For each variable, a private copy
+               is created for each parallel gang and initialized for that
+               operator. At the end of the region, the values for each gang
+               are combined using the reduction operator, and the result
+               combined with the value of the original variable and stored
+               in the original variable. The reduction result is available
+               after the region. The following table lists the operators
+               that are valid and the initialization values; in each case,
+               the initialization value will be cast into the variable
+               type. For max and min reductions, the initialization values
+               are the least representable value and the largest
+               representable value for the variable's data type,
+               respectively. Supported data types are the numerical data
+               types in C and C++ (int, float, double, complex) and Fortran
+               (integer, real, double precision, complex).
+
+
+         ------------------------------------------------------------------
+         operator         init value       operator         init value
+         ------------------------------------------------------------------
+         +                0                +                0
+         *                1                *                1
+         max              least            max              least
+         min              largest          min              largest
+         &                ~0               iand             all bits on
+         |                0                ior              0
+         ^                0                ieor             0
+         &&               1                .and.            .true.
+         ||               0                .or.             .false.
+                                           .eqv             .true.
+                                           .neqv            .false.
+         ------------------------------------------------------------------
+
+
+
+RUNTIME ROUTINES
+     To use these routine bindings from Fortran, include the header file
+     openacc_lib.h or use the openacc_lib module. Please see the
+     Using_OPENACC_LIB example on the openacc.examples(7) man page.
+
+   Defined by OpenACC Specification
+     The following interfaces defined by the OpenACC specification are
+     currently supported.
+
+     o  int acc_get_num_devices( acc_device_t );
+
+     o  void acc_set_device_type( acc_device_t );
+
+     o  acc_device_t acc_get_device_type( );
+
+     o  void acc_set_device_num( int, acc_device_t );
+
+     o  int acc_get_device_num( acc_device_t );
+
+     o  int acc_async_test( int );
+
+     o  int acc_async_test_all();
+
+     o  void acc_async_wait( int );
+
+     o  void acc_async_wait_async(int,int);
+
+     o  void acc_wait_all();
+
+     o  void acc_async_wait_all();
+
+     o  void acc_async_wait_all_async( int );
+
+     o  void acc_init( acc_device_t );
+
+     o  void acc_shutdown( acc_device_t );
+
+     o  int acc_on_device( acc_device_t );
+
+     o  void* acc_malloc( size_t );
+
+     o  void acc_free( void* );
+
+     o  void* acc_copyin( void*, size_t );
+
+     o  void* acc_present_or_copyin( void*, size_t );
+
+     o  void* acc_pcopyin( void*, size_t );
+
+     o  void* acc_create( void*, size_t );
+
+     o  void* acc_present_or_create( void*, size_t );
+
+     o  void* acc_pcreate( void*, size_t );
+
+     o  void acc_copyout( void*, size_t );
+
+     o  void acc_delete( void*, size_t );
+
+     o  void acc_update_device( void*, size_t );
+
+     o  void acc_update_self( void*, size_t );
+
+     o  void acc_map_data( void*, void*, size_t );
+
+     o  void acc_unmap_data( void* );
+
+     o  void* acc_deviceptr( void* );
+
+     o  void* acc_hostptr( void* );
+
+     o  int acc_is_present( void*, size_t );
+
+     o  void* acc_memcpy_to_device( void*, void*, size_t );
+
+     o  void* acc_memcpy_from_device( void*, void*, size_t );
+
+   Cray Specific
+     Most Cray specific OpenACC interfaces have been adopted by OpenACC
+     2.0; therefore, they are deprecated and will be removed in a future
+     release.
+
+   CRAY_ACC_DEBUG Output Routines
+     When the runtime environment variable CRAY_ACC_DEBUG is set to 1, 2,
+     or 3, CCE writes runtime commentary of accelerator activity to STDERR
+     for debugging purposes; every accelerator action on every PE generates
+     output prefixed with "ACC:". This may produce a large volume of output
+     and it may be difficult to associate messages with certain routines
+     and/or certain PEs.
+
+     With this set of API calls, the programmer can enable or disable
+     output at certain points in the code, and modify the string that is
+     used as the debug message prefix.
+
+   Set prefix or get prefix
+     The cray_acc_set_debug_*_prefix( void ) routines define a string that
+     is used as the prefix, with the default being "ACC:". The
+     cray_acc_get_debug_*_prefix( void ) routines are provided so that the
+     previous setting can be restored.
+
+     Output from the library is printed with a format string starting with
+     "ACC: %s %s", where the global prefix is printed for the first %s (if
+     not NULL), and the thread prefix is printed for the second %s. The
+     global prefix is shared by all host threads in the application, and
+     the thread prefix is set per-thread. By default, strings used in the
+     %s fields are empty.
+
+     The C interface is provided by omp.h:
+
+     o  char *cray_acc_get_debug_global_prefix( void )
+
+     o  void cray_acc_set_debug_global_prefix( char * )
+
+     o  char *cray_acc_get_debug_thread_prefix( void )
+
+     o  void cray_acc_set_debug_thread_prefix( char * )
+
+     The Fortran interface is provided by the omp_lib module:
+
+     o  subroutine cray_acc_get_debug_global_prefix( prefix )
+
+        character (:), allocatable, intent(out) :: prefix
+
+     o  subroutine cray_acc_set_debug_global_prefix( prefix )
+
+        character (*), intent(out) :: prefix
+
+     o  subroutine cray_acc_get_debug_thread_prefix( prefix )
+
+        character (:), allocatable, intent(out) :: prefix
+
+     o  subroutine cray_acc_set_debug_thread_prefix( int level )
+
+        character (*), intent(out) :: prefix
+
+   Set and get debug level
+     To enable debug output, set level from 1 to 3, with 3 being the most
+     verbose. Setting a level less than or equal to 0 disables the debug
+     output. The get version is provided so the previous setting can be
+     restored. The thread level is an optional override of the global
+     level.
+
+     C:
+
+     o  int cray_acc_get_debug_global_level( void )
+
+     o  void cray_acc_set_debug_global_level( int level )
+
+     o  int cray_acc_get_debug_thread_level( void )
+
+     o  void cray_acc_set_debug_thread_level( int level )
+
+     Fortran:
+
+     o  function cray_acc_get_debug_global_level()
+
+     o  subroutine cray_acc_set_debug_global_level( level )
+
+        integer ( kind = 4 ), intent(in), value :: level
+
+     o  function cray_acc_get_debug_thread_level()
+
+     o  subroutine cray_acc_set_debug_thread_level( level )
+
+        integer ( kind = 4 ), intent(in), value :: level
+
+MODULE SUPPORT
+     To compile, ensure that PrgEnv-cray module is loaded and that it
+     includes CCE 8.2 or later. Also, load the craype-accel-nvidiaversion
+     module, which sets the necessary compiler options and targets to use
+     the accelerator. Use either the ftn or cc command to compile. The
+     module environment forces dynamic linking.
+
+     The craype-accel-host module supports compiling and running an OpenACC
+     application on the host X86 processor. This provides source code
+     portability between systems with and without an accelerator. The
+     accelerator directives are automatically converted at compile time to
+     OpenMP equivalent directives.
+
+COMPILING
+     Note the following interactions between directives and command line
+     options:
+
+   -x                               (ftn only) The -x option accepts one or
+                                    more directives as arguments.
+                                    Directives specified with the -x option
+                                    are ignored during compilation. To
+                                    ignore all directives, specify -x all.
+                                    To ignore accelerator directives,
+                                    specify -x acc.
+   -h [no]acc                       -h noacc disables OpenACC directives.
+   -h [no]pragma                    (C/C++ only) Same as -xacc
+   -h acc_model=option[:option] ... Explicitly controls the execution and
+                                    memory model utilized by the
+                                    accelerator support system. The option
+                                    arguments identify the type of behavior
+                                    desired. There are three option sets.
+                                    Only one member of a set may be used at
+                                    a time; however, all three sets may be
+                                    used together.
+   -Wx,arg                          Pass command line arguments to the PTX
+                                    assembler for OpenACC applications.
+   -Wc,arg                          Pass command line arguments to the CUDA
+                                    linker for OpenACC applications.
+
+     -h acc_model=option values:
+
+     option Set 1:
+
+     auto_async_none     Execute kernels and updates synchronously,
+                         unless there is an async clause present on
+                         the kernels or update directive.
+     auto_async_kernel   (Default) Execute all kernels
+                         asynchronously ensuring program order is
+                         maintained.
+     auto_async_all      Execute all kernels and data transfers
+                         asynchronously, ensuring program order is
+                         maintained.
+
+     option Set 2:
+
+     no_fast_addr        Use default types for addressing.
+     fast_addr           (Default) Attempt to use 32 bit integers
+                         in all addressing to improve performance.
+                         This optimization may result in incorrect
+                         behavior for some codes.
+
+     option Set 3:
+
+     no_deep_copy        (Default) Do not look inside of an object
+                         type to transfer sub-objects. Allocatable
+                         members of derived type objects will not
+                         be allocated on the device.
+     deep_copy           (Fortran only) Look inside of derived type
+                         objects and recreate the derived type on
+                         the accelerator recursively. A derived
+                         type object that contains an allocatable
+                         member will have memory allocated on the
+                         device for the member.
+
+     Default: acc_model=auto_async_kernel:fast_addr:no_deep_copy
+
+ENVIRONMENT VARIABLES
+     This environment variable affects the runtime behavior of the OpenACC
+     directives:
+
+   Cray Implementation
+     o  CRAY_ACC_MALLOC_HEAPSIZE
+
+        Specifies the accelerator heap size in bytes. The accelerator heap
+        size defaults to 8MB. When compiling with the debug option (-g),
+        CCE may require additional memory from the accelerator heap,
+        exceeding the 8MB default. In this case, there will be malloc
+        failures during compilation. It may be necessary to increase the
+        accelerator heap size to 32MB (33554432), 64MB (67108864), or
+        greater.
+
+     o  CRAY_ACC_DEBUG
+
+        When set to 1, 2, or 3 (most verbose), writes runtime commentary of
+        accelerator activity to STDERR for debugging purposes. There is
+        also an API which allows the programmer to enable/disable debug
+        output and set the output message prefix from within the
+        application. See CRAY_ACC_DEBUG Output Routines.
+
+   Standard
+     The following are environment variables are defined by the API
+     specification:
+
+     o  ACC_DEVICE_NUM
+
+     o  ACC_DEVICE_TYPE
+
+DISCUSSION
+     The accelerator executes parallel regions, which contain work sharing
+     loops executed as kernels on the accelerator. The CPU host manages
+     execution on the accelerator by allocating memory on the accelerator,
+     initiating data transfer, sending code, passing arguments to the
+     region, waiting for completion, transferring accelerator results back
+     to the CPU host and releasing memory.
+
+     The accelerator supports multiple levels of parallelism. A kernel is
+     composed of many parallel threads or vectors. Vectors (threads) are
+     grouped into sets called workers. All the vectors in a worker are
+     scheduled together and execute together. Workers are grouped into
+     larger sets called gangs. One or more gangs may comprise a kernel.
+
+     The compiler determines the number of gangs/workers/vectors based on
+     the problem and then maps the vectors, workers, and gangs onto the
+     accelerator architecture. Specifying the number of gangs, workers, or
+     vectors is optional but may permit tuning to a particular target
+     architecture. The way that the compiler maps a particular problem onto
+     a constellation of gangs, workers, and vectors which are then mapped
+     onto the accelerator architecture is implementation defined. See
+     Partition Mapping for more information on this topic.
+
+     A host program starts on the host CPU with a single thread, which may
+     spawn additional threads. OpenACC directives may be executed by a host
+     thread or by an accelerator thread. The thread that executes the
+     directive is sometimes referred to as the local thread, whether it
+     executes on the host or accelerator. Accelerators may operate
+     asynchronously from the host thread, depending on the OpenACC
+     directives employed. The host thread executes asynchronous operations
+     on the accelerator device by enqueuing them into one or more activity
+     queues. Depending on directives, host may wait for individual activity
+     queues, or all of them.
+
+   Tips
+   Fortran
+     Fortran assumed size A(*) and C pointers must be shaped. The compiler
+     does not know the length of memory that is behind the pointer so it
+     cannot setup data transfers, compiler will issue an error. Always use
+     ":" when shaping with an entire dimension (i.e. A(:,1:2) or A[:][1:2])
+
+     OpenACC constructs allow limited use of Fortran character strings.
+     Specifically, OpenACC constructs may contain scalar, constant-length
+     Fortran character variables and the following Fortran character
+     operations: assignment, comparison, and substring. An error will be
+     issued if an OpenACC construct contains Fortran character variables of
+     symbolic length, arrays of type Fortran character, or any Fortran
+     character operation not specifically mentioned above.
+
+   Simplify debugging process
+     Get your application working without data regions, than add data
+     regions. This simplifies the debugging process. The code may run
+     slower but the data being used will always be correct.
+
+     Get your application working synchronously, than add async clauses.
+     This simplifies the debugging process and ensures that all data
+     accesses are complete in one region before another region starts.
+     Incorrect async clause setup may lead to data races on the
+     accelerator, regions that read and regions that write the same data
+     must run consecutively but not necessarily synchronously.
+
+   Partition Mapping
+     The accelerator architecture is comprised of two main components -
+     global memory and some number of streaming multiprocessors (SM). Each
+     SM contains multiple scalar processor (SP) cores, schedulers, special-
+     function units, and memory which is shared among all the SP cores. An
+     SP core contains floating point, integer, logic, branching, and move
+     and compare units. Each thread/vector is executed by a core. The SM
+     manages thread execution.
+
+     The OpenACC execution model maps to the NVIDIA GPU hardware as follows
+     (GPU terms are in parenthesis): One or more OpenACC kernels may
+     execute on an GPU. The compiler divides a kernel into one or more
+     gangs (blocks) of vectors (threads). Several concurrent gangs (blocks)
+     of threads may execute on one SM depending on several factors,
+     including memory requirements, compiler optimizations, or user
+     directives. A single block (gang) does not span SMs and will remain on
+     one SM until completion. When the SM encounters a block (gang), each
+     gang (block) is further broken up into workers (warps) which are
+     groups of threads to execute in parallel. Scheduling occurs at the
+     granularity of the worker (warp). Individual threads within a warp
+     start together and execute one common instruction at a time. If
+     conditional branching occurs within a worker (warp), the warp serially
+     executes each branch path taken causing some threads to wait until
+     threads converge back to the same instruction. Data dependent
+     conditional code within a warp usually has negative performance
+     impact. Worker (warp) threads also fetch data from memory together and
+     when accessing global memory, the accesses of the threads within a
+     warp are grouped to minimize transactions. Each thread in a worker
+     (warp) is executed on a different SP core.
+
+     There may be up to 32 threads in a worker (warp) - a limit defined by
+     the hardware.
+
+       // The compiler maps a 3-level nest onto
+       // the GPU as indicated, by default. Using the optional clauses
+       // gang, worker, vector, in that order, on 3 nested loops
+       // does not affect partitioning
+       // but may be useful for improved readability.
+
+
+       !$acc loop             /* Every iteration of i placed on next block.
+                                Once all blocks are used, wrap around to first
+                                block in GPU.                        */
+       do i=1,n
+       !$acc loop           /* every iteration of j placed on next warp in a block*/
+          do j=1,n
+       !$acc loop           /* every iteration of k placed on next thread in a warp*/
+             do k=1,n
+                a(k,j,i) = a(k,j,i) + b(k,j,i)
+             end do
+          end do
+       end do
+
+
+
+
+       //  2-level nested loop can be mapped onto
+       //  GPU block/warp/thread in different ways.
+
+       !$acc loop           /* every iteration of i placed on next block  */
+       do i=1,n
+       !$acc loop           /* every iteration of j placed on next thread within
+                               current warp of current block.
+                               If no more threads in warp, then next warp in block.
+                               If last warp in block, then wrap to first warp.
+                            */
+          do j=1,n
+             a(j,i) = a(j,i) + b(j,i)
+          end do
+       end do
+
+
+       !$acc loop gang worker /* every iteration of i placed on next warp within
+                               current thread block until all warps on current block are
+                               used,then use first warp in next block.
+                                          */
+       do i=1,n
+       !$acc loop           /* every iteration of j placed on next thread within a warp
+                               the vector clause is optional, and has no impact except
+                               readability
+                             */
+          do j=1,n
+             a(j,i) = a(j,i) + b(j,i)
+          end do
+       end do
+
+
+
+
+       // 1-level loops can be mapped onto GPU architecture in several different ways
+
+       !$acc loop           /*  each iteration of i placed on next thread within
+                                current warp of current block until warp or block is full,
+                                then on to next warp, or block when warps are full.
+                                Loop defaults to gang worker vector
+                                clauses. May span blocks.
+                             */
+       do i=1,n
+          a(i) = a(i) + b(i)
+       end do
+
+
+       !$acc loop worker    /* each iteration of i placed on next workers first
+                               available thread. Uses single block.
+                             */
+
+       do i=1,n
+          a(i) = a(i) + b(i)
+       end do
+
+
+       !$acc loop vector    /* each iteration of i placed on next
+                               thread in warp, then on to first thread in next warp.
+                               Uses single block.
+                             */
+
+       do i=1,n
+          a(i) = a(i) + b(i)
+       end do
+
+       //   Partitioning forced to be a single thread block -
+       //   outer most loop is not gang
+
+       !$acc loop worker    /* 2-level loop nest. Each iteration of i placed
+                               on next warp in same thread block.
+                               when all warps full, wrap to first warp, same block.
+                             */
+       do i=1,n
+       !$acc loop           /* each iteration of j placed on next thread within warp */
+          do j=1,n
+             a(j,i) = a(j,i) + b(j,i)
+          end do
+       end do
+
+
+       !$acc loop worker          /* each iteration of i placed on next available
+                                     thread in next warp within a single thread block.
+                                     after last warp, wrap to first warp, same block.
+                                   */
+       do i=1,n
+           a(i) = a(i) + b(i)
+       end do
+
+       !$acc loop vector          /* each iteration of i placed on next thread in same warp
+                                     within the block. move to next warp when full.
+                                     after last warp, wrap to first warp, same block.*/
+
+       do i=1,n
+           a(i) = a(i) + b(i)
+       end do
+
+
+   Mixed Model Support
+     OpenMP directives may appear inside of OpenACC data or host data
+     regions only. OpenMP directives are not allowed inside of any other
+     OpenACC directives.
+
+     For example, the following is permitted:
+
+       #pragma acc data
+            {
+       #pragma omp parallel
+         {a = 10}
+       }
+
+
+     OpenACC may not appear inside OpenMP directives. If you wish to have
+     OpenACC directives nested inside of OpenMP constructs, place them in
+     calls that are not inlined.
+
+SEE ALSO
+     intro_directives(7)
+
+     OpenACC.examples(7)
+
+     Cray C and C++ Reference Manual
+
+     Cray Fortran Reference Manual
+
+     The OpenACC Application Programming Interface
