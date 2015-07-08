@@ -7,6 +7,7 @@ implicit real(4) (A-H,O-Z)
 
         real(4) A(NN,NM), Anew(NN,NM)
 #ifdef _CRAY_ACC_DEBUG
+! /opt/cray/cce/default/craylibs/x86-64/include/openacc.h
         integer :: cray_acc_debug_orig
         cray_acc_debug_orig = cray_acc_get_debug_global_level()
         call cray_acc_set_debug_global_level(0)
