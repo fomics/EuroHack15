@@ -1,3 +1,4 @@
+! https://bitbucket.org/jgphpc/pug/issues/46/cray_acc_debug-api
 program jacobi_acc_kernels_datacopy
 use openacc
 implicit real(4) (A-H,O-Z)
