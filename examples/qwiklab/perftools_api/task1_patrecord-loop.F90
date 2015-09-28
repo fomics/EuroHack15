@@ -1,11 +1,15 @@
 program jacobi1
 
 ! https://bitbucket.org/jgphpc/pug/issue/45/perftools-api
+! https://bitbucket.org/jgphpc/pug/issues/61/scorep-api
 
 !use mpi
 implicit real(4) (A-H,O-Z)
 #ifdef _CRAYPAT_CSCS
 include 'pat_apif.h'
+#endif
+#ifdef _SCOREP
+#include "scorep/SCOREP_User.inc"
 #endif
 integer, parameter :: NN = 1024
 integer, parameter :: NM = 1024
@@ -17,8 +21,17 @@ real(4) A(NN,NM), Anew(NN,NM)
         call PAT_record(PAT_STATE_OFF, istat); 
         !print *,"pat_rec1=",istat,"f=",PAT_API_FAIL,"ok=",PAT_API_OK
 #endif
+#ifdef _SCOREP
+        SCOREP_USER_REGION_DEFINE( my_region_handle1 )
+        SCOREP_USER_REGION_DEFINE( my_region_handle2 )
+#endif
 
-        iter_max = 1000
+#ifdef _CSCS_ITMAX
+        iter_max = _CSCS_ITMAX
+#else
+        iter_max = 400
+#endif
+
         tol   = 1.0e-6
         error = 1.0
         A(1,:) = 1.0
@@ -37,6 +50,9 @@ real(4) A(NN,NM), Anew(NN,NM)
         call PAT_record(PAT_STATE_ON, istat); !print *,"pat_rec2=",istat
         call PAT_region_begin( 1, "loop1", istat ); !print *,"pat_rec3=",istat
 #endif
+#ifdef _SCOREP
+        SCOREP_USER_REGION_BEGIN( my_region_handle1, "loop1", SCOREP_USER_REGION_TYPE_COMMON )
+#endif
         do j = 2, NM-1
         do i = 2, NN-1
                 Anew(i,j) = 0.25 * ( A(i+1,j) + A(i-1,j) + &
@@ -48,6 +64,10 @@ real(4) A(NN,NM), Anew(NN,NM)
         call PAT_region_end ( 1, istat ); !print *,"pat_rec4=",istat
         call PAT_region_begin ( 2, "loop2", istat ); !print *,"pat_rec5=",istat
 #endif    
+#ifdef _SCOREP
+        SCOREP_USER_REGION_END( my_region_handle1 )
+        SCOREP_USER_REGION_BEGIN( my_region_handle2, "loop2", SCOREP_USER_REGION_TYPE_COMMON )
+#endif
         do j = 2, NM-1
         do i = 2, NN-1
                 A(i,j) = Anew(i,j)
@@ -58,6 +78,9 @@ real(4) A(NN,NM), Anew(NN,NM)
         call PAT_region_end ( 2, istat ); !print *,"pat_rec6=",istat
         call PAT_record(PAT_STATE_OFF, istat); !print *,"pat_rec7=",istat
 #endif    
+#ifdef _SCOREP
+        SCOREP_USER_REGION_END( my_region_handle2 )
+#endif
 
         if(mod(iter,100) == 0) print 101,iter,error
         iter = iter + 1
