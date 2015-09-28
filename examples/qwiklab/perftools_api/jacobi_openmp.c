@@ -9,7 +9,12 @@
 #include <pat_api.h>
 #endif
 
+#ifdef _SCOREP
+#include <scorep/SCOREP_User.h>
+#endif
+
 // https://bitbucket.org/jgphpc/pug/issue/45/perftools-api
+// https://bitbucket.org/jgphpc/pug/issue/61/scorep-api
 void init_host();
 void finalize_host();
 void start_timer();
@@ -46,6 +51,10 @@ int main(int argc, char** argv)
         printf("pat_rec fail=%d ok=%d\n",PAT_API_FAIL,PAT_API_OK);
         istat=PAT_record(PAT_STATE_OFF); //printf("%d: pat_rec=%d\n", __LINE__, istat);
 #endif
+//#ifdef _SCOREP
+//        int istat=0, my_region_handle0=0;
+//        istat=SCOREP_USER_REGION_DEFINE( my_region_handle0 );
+//#endif
         n=1024;
         m=1024;
         printf("Jacobi relaxation Calculation: %d x %d mesh ", n, m);
@@ -70,6 +79,11 @@ void jacobi()
         int istat;
         istat=PAT_record(PAT_STATE_ON); //printf("%d: pat_rec=%d\n", __LINE__, istat);
 #endif
+#ifdef _SCOREP
+        //int istat=0 , my_region_handle1=0, my_region_handle2=0;
+        SCOREP_USER_REGION_DEFINE( my_region_handle1 )
+        SCOREP_USER_REGION_DEFINE( my_region_handle2 )
+#endif
 
   while ( residue > tol && iter < iter_max )
     {
@@ -77,6 +91,9 @@ void jacobi()
 
 #ifdef _CRAYPAT_CSCS
       istat=PAT_region_begin( 1, "loop1" ); //printf("%d: pat_rec=%d\n", __LINE__, istat);
+#endif
+#ifdef _SCOREP
+        SCOREP_USER_REGION_BEGIN( my_region_handle1, "loop1", SCOREP_USER_REGION_TYPE_COMMON )
 #endif
 
 #pragma omp parallel
@@ -104,6 +121,10 @@ void jacobi()
       istat=PAT_region_end( 1 ); //printf("%d: pat_rec=%d\n", __LINE__, istat);
       istat=PAT_region_begin( 2, "loop2" ); //printf("%d: pat_rec=%d\n", __LINE__, istat);
 #endif
+#ifdef _SCOREP
+      SCOREP_USER_REGION_END( my_region_handle1 )
+      SCOREP_USER_REGION_BEGIN( my_region_handle2, "loop2", SCOREP_USER_REGION_TYPE_COMMON )
+#endif
       int i,j;
 //#pragma omp parallel for
       for( j = 0; j < n-1; j++)
@@ -116,6 +137,9 @@ void jacobi()
 #ifdef _CRAYPAT_CSCS
         istat=PAT_region_end( 2 ); //printf("%d: pat_rec=%d\n", __LINE__, istat);
         istat=PAT_record(PAT_STATE_OFF); //printf("%d: pat_rec=%d\n", __LINE__, istat);
+#endif
+#ifdef _SCOREP
+      SCOREP_USER_REGION_END( my_region_handle2 )
 #endif
 
       if(rank == 0 && iter % 100 == 0)
